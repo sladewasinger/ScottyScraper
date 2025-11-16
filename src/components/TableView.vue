@@ -51,8 +51,8 @@ function levenshtein(a, b) {
   return dp[m][n]
 }
 
-// Fast substring-based scoring for fuzzy search, with Levenshtein fallback
-function scoreMatch(query, text) {
+// Fast substring-based scoring for fuzzy search, with Levenshtein fallback (cached)
+function scoreMatch(query, text, levenCache = {}) {
   if (!query || !text) return 999999
   const lowerText = text.toLowerCase()
   const lowerQuery = query.toLowerCase()
@@ -78,12 +78,17 @@ function scoreMatch(query, text) {
   }
   if (tokenMatches > 0) return 100 + (queryTokens.length - tokenMatches) * 10
   
-  // Fallback: Levenshtein on individual tokens for typo tolerance
+  // Fallback: Levenshtein on individual tokens for typo tolerance (with caching)
   // e.g., "buna" vs "bunna" in the text "bunnahabhain"
   let bestTokenDistance = 999999
   for (const qt of queryTokens) {
     for (const tt of textTokens) {
-      const dist = levenshtein(qt, tt)
+      const cacheKey = `${qt}|${tt}`
+      let dist = levenCache[cacheKey]
+      if (dist === undefined) {
+        dist = levenshtein(qt, tt)
+        levenCache[cacheKey] = dist
+      }
       // Only consider matches within ~30% distance of the query length
       const threshold = Math.ceil(qt.length * 0.3) + 1
       if (dist <= threshold) {
