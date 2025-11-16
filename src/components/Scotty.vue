@@ -1,7 +1,7 @@
 <template>
-  <div class="scotty" @click="nextQuote" :title="quote">
+  <div class="scotty" :title="quote">
     <img src="/scotty.svg" alt="Scotty" />
-    <div class="bubble">{{ quote }}</div>
+    <div class="bubble" v-if="isShowingQuote">{{ quote }}</div>
   </div>
 </template>
 
@@ -15,9 +15,37 @@ const QUOTES = [
 ]
 
 export default {
-  data() { return { quote: QUOTES[0] } },
-  mounted() { this.timer = setInterval(this.nextQuote, 6000) },
-  beforeUnmount() { clearInterval(this.timer) },
-  methods: { nextQuote() { this.quote = QUOTES[Math.floor(Math.random()*QUOTES.length)] } }
+  data() { 
+    return { 
+      quote: QUOTES[0],
+      isShowingQuote: false,
+      hoverDebounceTimer: null
+    } 
+  },
+  methods: { 
+    showRandomQuote() {
+      this.quote = QUOTES[Math.floor(Math.random()*QUOTES.length)]
+      this.isShowingQuote = true
+      clearTimeout(this.hoverDebounceTimer)
+    },
+    onRowHover() {
+      clearTimeout(this.hoverDebounceTimer)
+      this.hoverDebounceTimer = setTimeout(() => {
+        this.showRandomQuote()
+      }, 150)
+    },
+    onRowLeave() {
+      clearTimeout(this.hoverDebounceTimer)
+      this.isShowingQuote = false
+    }
+  },
+  mounted() {
+    window.addEventListener('scotty:rowHover', this.onRowHover)
+    window.addEventListener('scotty:rowLeave', this.onRowLeave)
+  },
+  beforeUnmount() {
+    window.removeEventListener('scotty:rowHover', this.onRowHover)
+    window.removeEventListener('scotty:rowLeave', this.onRowLeave)
+  }
 }
 </script>

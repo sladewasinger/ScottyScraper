@@ -21,7 +21,7 @@
         </tr>
       </thead>
       <tbody>
-        <tr v-for="(r, idx) in displayed" :key="idx">
+        <tr v-for="(r, idx) in displayed" :key="idx" @mouseenter="onRowHover" @mouseleave="onRowLeave">
           <td>{{ r.category }}</td>
           <td>{{ r.item }}</td>
           <td>{{ r.price }}</td>
@@ -145,6 +145,12 @@ export default {
       if (this.sortKey === key) this.sortDir = this.sortDir === 1 ? -1 : 1
       else { this.sortKey = key; this.sortDir = 1 }
       this.applySort()
+    },
+    onRowHover() {
+      window.dispatchEvent(new Event('scotty:rowHover'))
+    },
+    onRowLeave() {
+      window.dispatchEvent(new Event('scotty:rowLeave'))
     }
   }
 }
