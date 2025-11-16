@@ -94,7 +94,7 @@ header h1{
 }
 
 .controls .proxy input[type="checkbox"]{
-  width:20px;
+  width: auto;
   height:20px;
   min-width: min-content;
   cursor:pointer;

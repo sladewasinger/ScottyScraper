@@ -36,7 +36,22 @@
 </template>
 
 <script>
-// Fast substring-based scoring for fuzzy search (much faster than Levenshtein)
+// Levenshtein distance for fuzzy typo matching
+function levenshtein(a, b) {
+  const m = a.length, n = b.length
+  const dp = Array(m + 1).fill(null).map(() => Array(n + 1).fill(0))
+  for (let i = 0; i <= m; i++) dp[i][0] = i
+  for (let j = 0; j <= n; j++) dp[0][j] = j
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost)
+    }
+  }
+  return dp[m][n]
+}
+
+// Fast substring-based scoring for fuzzy search, with Levenshtein fallback
 function scoreMatch(query, text) {
   if (!query || !text) return 999999
   const lowerText = text.toLowerCase()
@@ -63,6 +78,21 @@ function scoreMatch(query, text) {
   }
   if (tokenMatches > 0) return 100 + (queryTokens.length - tokenMatches) * 10
   
+  // Fallback: Levenshtein on individual tokens for typo tolerance
+  // e.g., "buna" vs "bunna" in the text "bunnahabhain"
+  let bestTokenDistance = 999999
+  for (const qt of queryTokens) {
+    for (const tt of textTokens) {
+      const dist = levenshtein(qt, tt)
+      // Only consider matches within ~30% distance of the query length
+      const threshold = Math.ceil(qt.length * 0.3) + 1
+      if (dist <= threshold) {
+        bestTokenDistance = Math.min(bestTokenDistance, dist)
+      }
+    }
+  }
+  if (bestTokenDistance < 999999) return 200 + bestTokenDistance
+  
   // No match
   return 999999
 }
@@ -72,20 +102,23 @@ export default {
   data() {
     return {
       q: '',
+      qDebounced: '',
       working: [],
       sortKey: 'item',
-      sortDir: 1
+      sortDir: 1,
+      debounceTimer: null,
+      levenCache: {}
     }
   },
   computed: {
     displayed() {
-      const q = (this.q || '').trim()
+      const q = (this.qDebounced || '').trim()
       if (!q) return this.working
       // Fast substring + token matching on item only (primary search field)
       const scored = this.working.map(r => {
-        const itemScore = scoreMatch(q, r.item || '')
+        const itemScore = scoreMatch(q, r.item || '', this.levenCache)
         // category is secondary — only used as tiebreaker if item scores are equal
-        const categoryScore = scoreMatch(q, r.category || '')
+        const categoryScore = scoreMatch(q, r.category || '', this.levenCache)
         return { r, score: itemScore + categoryScore * 0.01 }
       })
       scored.sort((a, b) => a.score - b.score)
@@ -95,7 +128,13 @@ export default {
     }
   },
   watch: {
-    rows: { immediate: true, handler(newRows) { this.working = (newRows || []).slice(); this.applySort() } }
+    q(newQ) {
+      clearTimeout(this.debounceTimer)
+      this.debounceTimer = setTimeout(() => {
+        this.qDebounced = newQ
+      }, 300)
+    },
+    rows: { immediate: true, handler(newRows) { this.working = (newRows || []).slice(); this.applySort(); this.levenCache = {} } }
   },
   methods: {
     applySort() {
