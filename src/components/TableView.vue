@@ -51,23 +51,17 @@ function levenshtein(a, b) {
   return dp[m][n]
 }
 
-// Fast substring-based scoring for fuzzy search, with Levenshtein fallback (cached)
-function scoreMatch(query, text, levenCache = {}) {
+// Fast substring-based scoring (no Levenshtein) — runs instantly
+function scoreFastOnly(query, text, skipLev = false) {
   if (!query || !text) return 999999
   const lowerText = text.toLowerCase()
   const lowerQuery = query.toLowerCase()
   
-  // Exact match = best score
   if (lowerText === lowerQuery) return 0
-  
-  // Starts with query = very good
   if (lowerText.startsWith(lowerQuery)) return 1
-  
-  // Contains as substring = good
   const idx = lowerText.indexOf(lowerQuery)
   if (idx !== -1) return 10 + idx
   
-  // Token match (split by spaces, dashes, etc. and match individual tokens)
   const queryTokens = lowerQuery.split(/[\s\-_]+/).filter(Boolean)
   const textTokens = lowerText.split(/[\s\-_]+/).filter(Boolean)
   let tokenMatches = 0
@@ -78,18 +72,14 @@ function scoreMatch(query, text, levenCache = {}) {
   }
   if (tokenMatches > 0) return 100 + (queryTokens.length - tokenMatches) * 10
   
-  // Fallback: Levenshtein on individual tokens for typo tolerance (with caching)
-  // e.g., "buna" vs "bunna" in the text "bunnahabhain"
+  // If skipLev=true, stop here (instant results)
+  if (skipLev) return 999999
+  
+  // Otherwise run Levenshtein fallback (after debounce)
   let bestTokenDistance = 999999
   for (const qt of queryTokens) {
     for (const tt of textTokens) {
-      const cacheKey = `${qt}|${tt}`
-      let dist = levenCache[cacheKey]
-      if (dist === undefined) {
-        dist = levenshtein(qt, tt)
-        levenCache[cacheKey] = dist
-      }
-      // Only consider matches within ~30% distance of the query length
+      const dist = levenshtein(qt, tt)
       const threshold = Math.ceil(qt.length * 0.3) + 1
       if (dist <= threshold) {
         bestTokenDistance = Math.min(bestTokenDistance, dist)
@@ -98,7 +88,6 @@ function scoreMatch(query, text, levenCache = {}) {
   }
   if (bestTokenDistance < 999999) return 200 + bestTokenDistance
   
-  // No match
   return 999999
 }
 
@@ -117,13 +106,13 @@ export default {
   },
   computed: {
     displayed() {
-      const q = (this.qDebounced || '').trim()
+      const q = (this.q || '').trim()
       if (!q) return this.working
-      // Fast substring + token matching on item only (primary search field)
+      // Use fast-only scoring immediately; debounced scoring happens in background
+      const useLev = this.qDebounced === q
       const scored = this.working.map(r => {
-        const itemScore = scoreMatch(q, r.item || '', this.levenCache)
-        // category is secondary — only used as tiebreaker if item scores are equal
-        const categoryScore = scoreMatch(q, r.category || '', this.levenCache)
+        const itemScore = scoreFastOnly(q, r.item || '', !useLev)
+        const categoryScore = scoreFastOnly(q, r.category || '', !useLev)
         return { r, score: itemScore + categoryScore * 0.01 }
       })
       scored.sort((a, b) => a.score - b.score)
