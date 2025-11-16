@@ -13,11 +13,11 @@
     <table class="results">
       <thead>
         <tr>
-          <th @click="setSort('category')">Category</th>
-          <th @click="setSort('item')">Item</th>
-          <th @click="setSort('price')">Price</th>
-          <th @click="setSort('upc')">UPC</th>
-          <th @click="setSort('size')">Size</th>
+          <th @click="setSort('category')" :class="{ active: sortKey==='category' }">Category <span class="sort-arrow">{{ sortKey==='category' ? (sortDir===1? '↑' : '↓') : '' }}</span></th>
+          <th @click="setSort('item')" :class="{ active: sortKey==='item' }">Item <span class="sort-arrow">{{ sortKey==='item' ? (sortDir===1? '↑' : '↓') : '' }}</span></th>
+          <th @click="setSort('price')" :class="{ active: sortKey==='price' }">Price <span class="sort-arrow">{{ sortKey==='price' ? (sortDir===1? '↑' : '↓') : '' }}</span></th>
+          <th @click="setSort('upc')" :class="{ active: sortKey==='upc' }">UPC <span class="sort-arrow">{{ sortKey==='upc' ? (sortDir===1? '↑' : '↓') : '' }}</span></th>
+          <th @click="setSort('size')" :class="{ active: sortKey==='size' }">Size <span class="sort-arrow">{{ sortKey==='size' ? (sortDir===1? '↑' : '↓') : '' }}</span></th>
         </tr>
       </thead>
       <tbody>

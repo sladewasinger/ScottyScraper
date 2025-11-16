@@ -4,13 +4,17 @@
       <h1>ScottyScraper</h1>
       <div class="controls">
         <input v-model="targetUrl" placeholder="Target URL to scrape" />
-        <button @click="load">Load</button>
+        <button @click="load" :disabled="isLoading">{{ isLoading ? 'Loading...' : 'Load' }}</button>
         <label class="proxy"><input type="checkbox" v-model="useProxy" /> Use CORS proxy</label>
       </div>
     </header>
 
     <main>
-      <TableView :rows="rows" @search="onSearch" />
+      <div v-if="isLoading" class="loading-spinner">
+        <div class="spinner"></div>
+        <p>Fetching XML...</p>
+      </div>
+      <TableView v-else :rows="rows" @search="onSearch" />
     </main>
 
     <Scotty />
@@ -28,7 +32,8 @@ export default {
       defaultUrl: '',
       targetUrl: '',
       useProxy: true,
-      rows: []
+      rows: [],
+      isLoading: false
     }
   },
   mounted() {
@@ -44,6 +49,7 @@ export default {
   methods: {
     async load() {
       this.rows = []
+      this.isLoading = true
       try {
         const url = this.targetUrl
         const html = await fetchHtml(url, this.useProxy)
@@ -51,6 +57,8 @@ export default {
       } catch (err) {
         alert('Failed to load: ' + err.message)
         console.error(err)
+      } finally {
+        this.isLoading = false
       }
     },
     onSearch(filteredRows) {
