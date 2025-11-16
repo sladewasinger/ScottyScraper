@@ -22,6 +22,8 @@ body {
     color: var(--black);
     padding: 15px;
     box-sizing: border-box;
+    flex-direction: column;
+    width: -webkit-fill-available;
 }
 
 #app {
